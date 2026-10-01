@@ -1,0 +1,32 @@
+# Python virtual environment
+.venv/
+
+# Python-generated cache files
+__pycache__/
+*.py[cod]
+
+# Testing and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter Notebook temporary files
+.ipynb_checkpoints/
+
+# Environment variables and secrets
+.env
+
+# Editor-specific files
+.vscode/
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Original and generated project data
+data/raw/*
+data/interim/*
+data/processed/*
+
+# Generated analytical figures
+reports/figures/*
