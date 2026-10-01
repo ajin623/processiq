@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "processiq"
+version = "0.1.0"
+description = "Purchase-to-pay process intelligence and decision-support analysis."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+authors = [
+    { name = "Ajin Babu" }
+]
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
