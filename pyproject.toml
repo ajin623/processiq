@@ -11,7 +11,10 @@ requires-python = ">=3.12,<3.13"
 authors = [
     { name = "Ajin Babu" }
 ]
-dependencies = []
+dependencies = [
+    "pandas==3.0.6",
+    "pm4py==2.7.23.8",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
