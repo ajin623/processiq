@@ -12,8 +12,10 @@ authors = [
     { name = "Ajin Babu" }
 ]
 dependencies = [
+    "numpy==2.5.3",
     "pandas==3.0.6",
     "pm4py==2.7.23.8",
+    "scipy==1.18.1",
 ]
 
 [tool.setuptools.packages.find]
