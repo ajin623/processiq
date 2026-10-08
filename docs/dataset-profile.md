@@ -1,5 +1,7 @@
 # BPI Challenge 2019 Structural Profile
 
+This is the historical profiling snapshot from **2 October 2026**. Analysis has since been completed and the full pipeline passed on 8 October 2026. Current analytical scope and results are in [methodology](methodology.md) and [findings](findings.md); the profile below remains a record of the initial inspection.
+
 ## 1. Status
 
 This document records the first independently reproduced structural profile of the ProcessIQ source event log.
@@ -8,7 +10,7 @@ This document records the first independently reproduced structural profile of t
 - **Source file:** `data/raw/BPI_Challenge_2019.xes`
 - **Profiler:** `processiq.inspect_xes`
 - **Profiler method:** Memory-conscious XML streaming
-- **Business analysis status:** Not started
+- **Business analysis status at the profile date:** Not started
 
 The results below describe the dataset's structure and basic field coverage. They are not process-performance findings.
 

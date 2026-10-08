@@ -37,7 +37,7 @@ The source describes four broad purchasing flows:
 3. Two-way matching without a required goods receipt
 4. Consignment
 
-These figures and categories are source-provided metadata. They have not yet been independently reproduced by the ProcessIQ ingestion pipeline.
+The [structural profile](dataset-profile.md) independently reproduced 251,734 cases, 1,595,923 events, 42 activities, and 627 unique non-missing resources. The full pipeline run on 8 October 2026 also reconciled case/event counts and the four category counts. The purchase-document count and human/batch-user split above remain source-described metadata unless separately verified; resource identifiers are not automatically human/automation labels.
 
 ## 4. Local Acquisition Record
 
@@ -61,3 +61,22 @@ stat --printf='File: %n\nBytes: %s\nModified: %y\n' data/raw/BPI_Challenge_2019.
 file data/raw/BPI_Challenge_2019.xes
 
 sha256sum data/raw/BPI_Challenge_2019.xes
+```
+
+The digest above records the original local acquisition. To compare another local copy against that record:
+
+```bash
+printf '%s\n' 'af63bc687fc4152f2123b05c3af7772b37ef3fce2d3f67f812666c9e356baae7  data/raw/BPI_Challenge_2019.xes' | sha256sum --check
+```
+
+## 6. Interpretation and Attribution
+
+The source describes 2018 time coverage. The actual structural profile contains timestamps outside 2018, including historical anomalies and a small number of 2020 events. ProcessIQ uses a documented 2018–2019 timing window plus chronology and duration checks; this is an analytical policy, not a claim that every timestamp in the source belongs to that window. See [methodology](methodology.md).
+
+Suggested dataset citation:
+
+> van Dongen, B. (2019). *BPI Challenge 2019*. 4TU.Centre for Research Data. https://doi.org/10.4121/uuid:d06aff4b-79f0-45e6-8ec8-e19730c248f1
+
+The source dataset is CC BY 4.0. ProcessIQ transforms its event records and produces derived tables and visualisations; those outputs are project analyses rather than statements from the dataset publisher. Retain source attribution when sharing derived work. The source licence does not assign a licence to the repository's own code.
+
+Raw and generated datasets remain ignored by Git. The committed PBIX contains imported report data and is a separate report artifact; excluding CSVs from Git does not mean the PBIX contains no data.

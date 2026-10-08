@@ -2,9 +2,27 @@
 
 ## 1. Purpose
 
-This document defines how ProcessIQ will convert the BPI Challenge 2019 XES event log into structured analytical data.
+This document records the data design and its implemented form as of 8 October 2026, aligned with code commit `5e191f1`. The original design defined grains, identifiers, and source mappings before ingestion. The current Python pipeline writes CSVs; the optional PostgreSQL scripts load a subset of those tables into constrained database tables.
 
-The model is defined before ingestion so that column names, row meanings, keys, data types, and calculation rules are not invented inconsistently during implementation.
+### Implemented outputs
+
+Paths below are relative to `data/processed/` and are generated locally.
+
+| File | Grain | Key / use |
+|---|---|---|
+| `cases.csv` | One purchase-item case | `case_id`; case attributes and spend-completeness flag |
+| `events.csv` | One source event | `case_id` + `event_position`; activity, time, resource, and quality flags |
+| `case_timing.csv` | One case | `case_id`; observed duration and eligibility reasons |
+| `case_conformance.csv` | One selected-category case | `case_id`; rule outcomes, review reasons, and diagnostics |
+| `transition_bottlenecks.csv` | One activity pair in the eligible selected cohort | `from_activity` + `to_activity`; counts and wait statistics |
+| `marker_duration_comparison.csv` | One diagnostic marker | `marker`; group sizes, durations, p-values, and effects |
+| `improvement_priorities.csv` | One configured investigation | `opportunity_id`; ranking, evidence, and cautions |
+| `dashboard_cases.csv` | One case across all categories | `case_id`; 48 columns combining case, timing, and available conformance |
+| `dashboard_kpis.csv` | One metric record | Section, metric key, category, value, unit, and interpretation; 45 rows in the reference build |
+
+`dashboard_cases` has a one-to-many relationship to `events` on `case_id`, with filtering from cases to events if the event table is imported. The dashboard builder leaves the existing event CSV separate. Aggregate transition, marker, and priority tables are scoped summaries, not event facts; they must not be joined to cases in a way that multiplies counts or implies unsupported slicer recalculation.
+
+Use CSV headers and `data/interim/dashboard_manifest.json` for the current generated schema. [Methodology](methodology.md) defines calculation rules; [reproducibility](reproducibility.md) describes Power Query typing and the optional database workflow.
 
 ## 2. Business Grain
 
@@ -46,11 +64,11 @@ One transition represents movement from one recorded event to the next recorded 
 
 ### Case metric
 
-One case-metric row summarises the complete history of one case.
+One case-metric row summarises the recorded history of one case; it does not establish process completion.
 
 ## 3. Data Layers
 
-ProcessIQ will use four logical data layers.
+ProcessIQ uses source, extracted, and processed data layers, with an optional PostgreSQL layer.
 
 ### Layer 1: Immutable source
 
@@ -67,7 +85,7 @@ Purpose:
 
 ### Layer 2: Interim extracted data
 
-Planned files:
+Implemented files:
 
 - `data/interim/cases_raw.csv`
 - `data/interim/events_raw.csv`
@@ -82,12 +100,13 @@ Purpose:
 
 These files will remain outside Git.
 
-### Layer 3: Typed PostgreSQL tables
+### Layer 3: Processed CSVs and Optional PostgreSQL Tables
 
-Planned tables:
+The pipeline writes processed `cases.csv`, `events.csv`, and `case_timing.csv`. [01_schema.sql](../sql/01_schema.sql) and [02_load.sql](../sql/02_load.sql) provide the corresponding PostgreSQL tables:
 
 - `cases`
 - `events`
+- `case_timing`
 
 Purpose:
 
@@ -98,15 +117,9 @@ Purpose:
 
 ### Layer 4: Derived analytical tables or views
 
-Planned analytical structures:
+The Python analytical outputs are listed in section 1. [03_analytical_layer.sql](../sql/03_analytical_layer.sql) implements the PostgreSQL `case_overview` and `transitions` views, indexes, and reconciliation queries.
 
-- `transitions`
-- `case_metrics`
-- Process-variant views
-- Data-quality views
-- Management KPI views
-
-Derived structures will be created only after their rules are documented and tested.
+The initial design also proposed database structures named `case_metrics` and separate process-variant, data-quality, and management-KPI views. Those names should not be assumed to exist: the implemented equivalents are the documented CSV/JSON outputs and two SQL views.
 
 ## 4. Event-Ordering Rule
 
@@ -158,10 +171,11 @@ One row per purchase-item case.
 | `vendor_name` | `Name` | `text` | Review | Anonymised vendor name |
 | `document_type` | `Document Type` | `text` | Review | Source document type |
 | `item_category` | `Item Category` | `text` | Yes | Matching category used to interpret expected process behaviour |
+| `spend_data_complete` | Derived | `boolean` | Yes | All three spend classification fields are recorded |
 
-`Review` means the attribute is structurally present, but its value quality and missing markers still need validation.
+`Review` marks source fields whose business meaning or missing-value coverage requires interpretation. They are nullable in the implemented PostgreSQL schema; see `01_schema.sql` for enforced constraints.
 
-Identifiers will remain text. Converting them to numbers could remove leading zeroes or create false arithmetic meaning.
+Identifiers remain text. Converting them to numbers could remove leading zeroes or create false arithmetic meaning.
 
 ## 6. Events Table
 
@@ -186,56 +200,62 @@ The combined key:
 | `event_timestamp` | `time:timestamp` | `timestamp with time zone` | Yes | Event timestamp converted to a timezone-aware value |
 | `resource_id` | `org:resource` | `text` | No | Recorded human, batch, or missing resource |
 | `user_id` | `User` | `text` | No | Source user value |
-| `cumulative_net_worth` | `Cumulative net worth (EUR)` | `numeric` | Review | Anonymised cumulative monetary value |
+| `cumulative_net_worth` | `Cumulative net worth (EUR)` | `numeric` | Yes | Anonymised cumulative monetary value; business interpretation requires care |
+| `resource_recorded` | Derived | `boolean` | Yes | Resource value remains after missing-marker normalisation |
+| `timestamp_in_analysis_window` | Derived | `boolean` | Yes | Timestamp falls in the implemented 2018–2019 window |
 
 The source labels the monetary field as EUR, but the official documentation states that monetary values were anonymised through a linear transformation.
 
-ProcessIQ will therefore use the field for relative and reconciliation analysis. It will not present the value as realised financial savings.
+ProcessIQ preserves and validates this field. The current improvement ranking does not use it to estimate financial savings.
 
-## 7. Transitions Structure
+## 7. Implemented PostgreSQL Transitions View
 
 ### Grain
 
 One row per consecutive pair of events within a case.
 
-### Planned columns
+### Columns
 
 | Column | Type | Meaning |
 |---|---|---|
 | `case_id` | `text` | Parent case |
-| `transition_position` | `integer` | Position of the transition within the case |
 | `from_event_position` | `integer` | Starting event position |
 | `to_event_position` | `integer` | Following event position |
 | `from_activity` | `text` | Starting activity |
 | `to_activity` | `text` | Following activity |
 | `from_timestamp` | `timestamp with time zone` | Starting event time |
 | `to_timestamp` | `timestamp with time zone` | Following event time |
+| `elapsed_interval` | `interval` | Recorded timestamp difference |
 | `elapsed_seconds` | `numeric` | Recorded time difference between the two events |
 | `same_timestamp` | `boolean` | Whether both timestamps are equal |
 | `negative_elapsed_time` | `boolean` | Whether source order moves backward in time |
+| `case_duration_eligible` | `boolean` | Eligibility of the parent case for duration analysis |
 
-`elapsed_seconds` is a recorded time difference. It will not automatically be called working time or waiting time because the event log may not reveal what happened between two recorded events.
+`elapsed_seconds` is a recorded time difference, not measured working time. The bottleneck report describes eligible elapsed intervals as observed waiting time and documents that activity between events may be unrecorded. The SQL view retains ineligible cases with a flag; duration queries must filter it explicitly. This row-level view differs from the aggregated activity-pair CSV.
 
-## 8. Case Metrics Structure
+## 8. Implemented Case Timing Structure
 
 ### Grain
 
 One row per case.
 
-### Planned columns
+### Columns
 
 | Column | Type | Meaning |
 |---|---|---|
 | `case_id` | `text` | Case identifier |
-| `first_event_timestamp` | `timestamp with time zone` | Earliest event time used for the case |
-| `last_event_timestamp` | `timestamp with time zone` | Latest event time used for the case |
+| `first_event_timestamp` | `timestamp with time zone` | Timestamp of the first source-ordered event |
+| `last_event_timestamp` | `timestamp with time zone` | Timestamp of the last source-ordered event |
 | `cycle_time_seconds` | `numeric` | Difference between the selected first and last timestamps |
+| `cycle_time_days` | `numeric` | Recorded span in seconds divided by 86,400 |
 | `event_count` | `integer` | Number of events in the case |
-| `unique_activity_count` | `integer` | Number of different activities |
-| `repeat_event_count` | `integer` | Event count minus unique-activity count |
-| `missing_resource_event_count` | `integer` | Events with a missing resource marker |
-| `variant_signature` | `text` | Ordered activity sequence |
-| `has_negative_elapsed_time` | `boolean` | Whether any consecutive timestamps move backward |
+| `outside_analysis_window_event_count` | `integer` | Events outside 2018–2019 |
+| `has_negative_timestamp` | `boolean` | Whether consecutive timestamps move backward |
+| `exceeds_365_days` | `boolean` | Recorded span is strictly greater than 365 days |
+| `duration_eligible` | `boolean` | Case passes all duration-scope checks |
+| `duration_exclusion_reason` | `text` | Reasons for exclusion; empty/NULL when eligible |
+
+The original design proposed additional case-level variant and repetition fields. These are not columns of the implemented timing table. Variant summaries and diagnostic markers are produced in the discovery and conformance/bottleneck outputs.
 
 A repeated activity is not automatically rework. Some activities legitimately recur, especially for purchase items involving multiple deliveries or invoices.
 
@@ -248,7 +268,7 @@ A separate business rule is required before repetition is classified as rework.
 - One case contains one or more events.
 - One event belongs to exactly one case.
 - One case with `n` events can produce `n - 1` transitions.
-- One case produces one case-metrics row.
+- One case produces one timing row.
 - Cases with one event produce zero transitions.
 
 ## 10. Naming Rules
@@ -286,13 +306,14 @@ Rules:
 
 - Parse timestamps as timezone-aware values.
 - Preserve the original event order.
-- Record timestamps outside the stated 2018 coverage.
+- Preserve source timestamps and record whether they fall outside the implemented 2018–2019 analysis window.
 - Do not delete historical or future timestamps automatically.
 - Flag negative consecutive durations.
 - Investigate events before 2010 separately.
 - Investigate the two observed 2020 events separately.
 - Determine whether 2019 events complete cases created in 2018.
-- Do not calculate trusted cycle times until timestamp-quality rules are approved.
+- Use only duration-eligible cases for duration summaries: no out-of-window event, no backwards timestamp step, and observed span at most 365 days.
+- Keep excluded cases and their reasons in the analytical tables. Eligibility does not imply completion or conformance.
 
 ## 13. Initial Integrity Rules
 
@@ -316,9 +337,8 @@ The ingestion and validation pipeline must test:
 
 ## 14. Explicit Non-Decisions
 
-ProcessIQ has not yet decided:
+The implemented duration-exclusion policy is documented in [methodology](methodology.md). The following business interpretations remain unresolved or outside the implemented scope:
 
-- Which timestamp anomalies should be excluded from duration metrics
 - Which repeated activities represent rework
 - Which final activities represent process completion
 - Which process path is compliant for every category
