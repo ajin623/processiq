@@ -32,11 +32,13 @@ fail() {
 }
 
 handle_error() {
+    local exit_status=$?
     printf \
         '\nERROR: Pipeline failed during "%s" near line %s.\n' \
         "$CURRENT_STAGE" \
         "$1" \
         >&2
+    exit "$exit_status"
 }
 
 trap 'handle_error "$LINENO"' ERR
@@ -56,11 +58,13 @@ run_stage() {
         "$stage_name" \
         "$((SECONDS - stage_start))"
 }
+
 if (( $# > 1 ))
 then
     usage >&2
     fail "Expected at most one argument: fast or full."
 fi
+
 case "$MODE" in
     -h|--help)
         usage
@@ -78,7 +82,10 @@ command -v "$PYTHON_COMMAND" >/dev/null 2>&1 ||
     fail "Python command not found: $PYTHON_COMMAND"
 
 [[ -f "pyproject.toml" ]] ||
-    fail "Run this script from the ProcessIQ repository."
+    fail "pyproject.toml is missing from the ProcessIQ repository."
+
+[[ -f "scripts/check_pipeline.py" ]] ||
+    fail "Missing scripts/check_pipeline.py. Copy both repair scripts."
 
 "$PYTHON_COMMAND" -c "import processiq" ||
     fail "The processiq package is unavailable. Activate the virtual environment."
@@ -92,7 +99,11 @@ then
         "Profile source XES" \
         "$PYTHON_COMMAND" \
         -m processiq.inspect_xes \
-        "$RAW_XES"
+        "$RAW_XES" \
+        --output data/interim/xes_profile.json
+
+    [[ -s "data/interim/xes_profile.json" ]] ||
+        fail "Source profile is missing or empty."
 
     run_stage \
         "Extract XES tables" \
@@ -112,27 +123,10 @@ run_stage \
     --output data/interim/data_quality_report.json \
     --progress-every 250000
 
-run_stage "Enforce validation checks" "$PYTHON_COMMAND" - <<'PY'
-    import json
-    from pathlib import Path
-
-    report = json.loads(
-    Path("data/interim/data_quality_report.json").read_text(encoding="utf-8")
-    )
-    status = report["status"]
-    required_checks = (
-    "structural_integrity_passed",
-    "count_reconciliation_passed",
-    )
-    failed = [
-    name for name in required_checks
-    if status.get(name) is not True
-    ]
-    if failed:
-    raise SystemExit("Validation gate failed: " + ", ".join(failed))
-
-    print("Structural integrity and count reconciliation passed.")
-    PY
+run_stage \
+    "Enforce validation checks" \
+    "$PYTHON_COMMAND" \
+    scripts/check_pipeline.py validation
 
 run_stage \
     "Build analytical tables" \
@@ -204,36 +198,12 @@ if [[ "$MISSING_OUTPUT" -ne 0 ]]
 then
     fail "Pipeline output verification failed."
 fi
-run_stage "Verify dashboard checksums" "$PYTHON_COMMAND" - <<'PY'
-import hashlib
-import json
-from pathlib import Path
 
-manifest = json.loads(
-    Path("data/interim/dashboard_manifest.json").read_text(encoding="utf-8")
-)
-expected_paths = {
-    "dashboard_cases": "data/processed/dashboard_cases.csv",
-    "dashboard_kpis": "data/processed/dashboard_kpis.csv",
-}
+run_stage \
+    "Verify dashboard checksums" \
+    "$PYTHON_COMMAND" \
+    scripts/check_pipeline.py dashboard
 
-for name, expected_path in expected_paths.items():
-    entry = manifest["generated_outputs"][name]
-    if entry["path"] != expected_path:
-        raise SystemExit(f"Unexpected manifest path for {name}")
-
-    path = Path(expected_path)
-    if path.stat().st_size != entry["size_bytes"]:
-        raise SystemExit(f"File size mismatch: {path}")
-
-    with path.open("rb") as stream:
-        actual_hash = hashlib.file_digest(stream, "sha256").hexdigest()
-
-    if actual_hash != entry["sha256"]:
-        raise SystemExit(f"Checksum mismatch: {path}")
-
-    print(f"Checksum verified: {path}")
-PY
 PIPELINE_ELAPSED=$((SECONDS - PIPELINE_START))
 
 printf \
