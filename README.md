@@ -6,7 +6,7 @@ ProcessIQ analyses **251,734 purchase-item cases and 1,595,923 events** from the
 
 **Status, 8 October 2026:** The Python analysis pipeline and dashboard are implemented. The full pipeline passed on the source dataset, including validation and dashboard checksum checks; all **92 automated tests passed**. Documentation is aligned with code commit `5e191f1`. Recommendations remain investigation proposals; no operational intervention or realised saving has been measured.
 
-[View dashboard PDF](reports/dashboard/ProcessIQ_Dashboard.pdf) · [Download Power BI report](reports/dashboard/ProcessIQ_Dashboard.pbix) · [Read findings](docs/findings.md) · [Reproduce the analysis](docs/reproducibility.md)
+[View dashboard PDF](reports/dashboard/ProcessIQ_Dashboard.pdf) · [Executive decision memo](reports/ProcessIQ_Executive_Decision_Memo.pdf) · [Portfolio case study](docs/portfolio-case-study.md) · [Download Power BI report](reports/dashboard/ProcessIQ_Dashboard.pbix) · [Reproduce the analysis](docs/reproducibility.md)
 
 ![ProcessIQ executive overview](docs/images/processiq-dashboard-1.png)
 
@@ -49,7 +49,7 @@ The implemented analysis is process mining and statistical decision support. It 
 | Improvement Priorities | Ranked investigations and decision cautions | [Image](docs/images/processiq-dashboard-3.png) |
 | Conformance & Controls | Rule outcomes and separation of incomplete evidence from review cases | [Image](docs/images/processiq-dashboard-4.png) |
 
-The PDF and PNGs are static snapshots. The pipeline regenerates analytical data; refreshing and exporting the Power BI report are separate steps. Some long labels and table columns are clipped in the current static export; the written findings preserve the full explanations.
+The PDF and PNGs are static snapshots. The pipeline regenerates analytical data; refreshing and exporting the Power BI report are separate steps. The export at `03072ab` displays the complete recommendation and caution texts. Some chart labels remain abbreviated and the bottleneck table still scrolls; the [export review](docs/dashboard-review.md) records the remaining layout and metric-label clarifications.
 
 ## Run the project
 
@@ -93,6 +93,9 @@ The successful full run recorded on 8 October 2026 took approximately **2 minute
 
 ## Documentation
 
+- [Executive decision memo](reports/ProcessIQ_Executive_Decision_Memo.pdf) and [editable Markdown](reports/executive-decision-memo.md)
+- [Portfolio case study](docs/portfolio-case-study.md)
+- [Dashboard export review](docs/dashboard-review.md)
 - [Methodology and scoring rules](docs/methodology.md)
 - [Findings and recommended investigations](docs/findings.md)
 - [Reproducibility and dashboard refresh](docs/reproducibility.md)

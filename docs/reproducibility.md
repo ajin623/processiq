@@ -174,7 +174,7 @@ Before exporting, verify these report behaviours:
 6. Medians, percentiles, and scores are not summed across unrelated summary rows. Pre-aggregated evidence tables are not automatically recalculated by case-level slicers without a valid filtering design.
 7. Long labels, recommendations, and decision cautions remain readable in the static export. Widen columns, enable wrapping, or give long text more space; visual scrollbars do not make off-screen text visible in a PDF.
 
-The current PDF has four pages. Some table content is clipped in the committed snapshots; [findings.md](findings.md) supplies full explanations. Re-export the PDF and images after presentation changes. The pipeline does not refresh or export Power BI automatically.
+The PDF at `03072ab` has four pages. The complete recommendations and cautions now fit; abbreviated chart labels and the scrollable bottleneck table remain documented in the [export review](dashboard-review.md). The priority summary's Evidence/Delay column also needs an explicit distinction between transition median waits and marker-group median differences. [findings.md](findings.md) and the [executive memo](../reports/ProcessIQ_Executive_Decision_Memo.pdf) provide the full interpretation. Re-export after presentation changes; the pipeline does not refresh or export Power BI automatically.
 
 ## 8. Export images and record changes
 

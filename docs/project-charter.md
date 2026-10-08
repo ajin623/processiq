@@ -157,7 +157,7 @@ A complicated process map or a large technology stack will not count as success 
 | Automated tests | 92 passing tests at the reference implementation |
 | Methodology, findings, and reproduction instructions | Documented in this repository |
 | GitHub repository | Maintained under version control |
-| Standalone executive memo and portfolio case study | Follow-up deliverables; the findings document provides the evidence base |
+| Standalone executive memo and portfolio case study | Prepared from documented findings; see the [memo](../reports/ProcessIQ_Executive_Decision_Memo.pdf) and [case study](portfolio-case-study.md) |
 | Operational pilot, financial savings, production deployment | Not delivered or claimed |
 
-The next steps are to improve static-export readability, prepare the executive memo and portfolio narrative, and record any separate database validation. Additional technologies should be introduced only when they support the business question.
+The written handoff now includes an executive decision memo and portfolio case study. Remaining follow-up includes the small presentation and metric-label items in the [dashboard review](dashboard-review.md), and recording any separate database validation. Operational enrichment, pilot design, and scoring sensitivity are proposed extensions, not delivered results. Additional technologies should be introduced only when they support the business question.
